@@ -2,16 +2,16 @@
 title: "Introduction to GIS in R"
 date: "December 2020"
 output:
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
   html_notebook:
     number_sections: yes
     theme: flatly
     toc: yes
     toc_depth: 3
     toc_float: yes
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: '3'
 ---
 
 ```{r, echo=FALSE}
@@ -31,9 +31,8 @@ library("tmap")
 library("knitr")
 ```
 
-# Set up
+## Set up
 
-* Go to [Github](https://github.com/ONSgeo/Introduction_to_GIS_in_R) and download the repository as a zip file. 
 * In RStudio go to File -> New Project -> Existing Directory -> Downloaded Github repository.
 * Run `getwd()` - the file path should end in "Introduction_to_GIS_in_R".
 * Open a new script: File -> New File -> R Script.
@@ -60,7 +59,7 @@ library(tidyverse)
 ```
 
 
-# Aims
+## Aims
 
 **By the end of the course you will: **
  
