@@ -2,16 +2,16 @@
 title: "Introduction to GIS in R"
 date: "December 2020"
 output:
-  html_document:
-    df_print: paged
-    toc: yes
-    toc_depth: '3'
   html_notebook:
     number_sections: yes
     theme: flatly
     toc: yes
-    toc_depth: 3
+    toc_depth: 2
     toc_float: yes
+  html_document:
+    toc: yes
+    toc_depth: '2'
+    df_print: paged
 ---
 
 ```{r, echo=FALSE}
@@ -31,6 +31,7 @@ library("tmap")
 library("knitr")
 ```
 
+# Introduction 
 ## Set up
 
 * In RStudio go to File -> New Project -> Existing Directory -> Downloaded Github repository.
@@ -82,8 +83,8 @@ wd_2019_bgc <- st_read("data/shp/Wards_December_2019_Boundaries_EW_BGC/Wards_Dec
 head(wd_2019_bgc)
 ```
 
-
-# London Fire Brigade Animal Rescue Data
+# Working with spatial data in R
+## London Fire Brigade Animal Rescue Data
 
 Throughout this tutorial you will be using data from the London Fire Brigade - [LFB Animal Rescue Data](https://data.london.gov.uk/dataset/animal-rescue-incidents-attended-by-lfb). It covers all incidents between 2009 and 2020 which included assistance to animals that may be trapped or in distress. The data is updated monthly and includes a range of variables for each incident including some location information (postcode, borough, ward),the date/time of the incidents, cost, and type of animal in trouble. 
 
@@ -163,7 +164,7 @@ So far we have created our own `sf` objects by adding a geometry column. The UTL
 
 **Solution**
 ```{r, message = FALSE}
-utla_2019 <- st_read("data/shp/London_2019/London_and_surrounding_UTLAs.shp")
+utla_2019 <- st_read("data/shp/London_2019/London_and_surrounding_UTLAs.shp", quiet = TRUE)
 tmap_mode("plot")
 qtm(utla_2019)
 
@@ -293,20 +294,20 @@ In `sf` spatial joins are handled using the `st_join(x, y)` function with argume
 * x - `sf` object to which we are joining data (LHS in SQL)
 * y - `sf` object whose variables are being joined (RHS in SQL)
 
-We will be joining the Middle Super Output Areas to LFB locations, which will then allow us to group and plot data at MSOA level.
+We will be joining the Middle Super Output Areas to LFB locations, which will then allow us to group and plot data at MSOA level. It's important to note that we are using two different sets of MSOA boundaries - one to perform a spatial join, and another to visualise the data. Full Extent (BFE) boundaries are used for the former. This ensures that all points are correctly joined to MSOA boundaries, and that we don't lose any data around bodies of water. To plot the data we use Super Generalised Clipped (BSC) boundaries. They are smaller in size, load faster, and, because they're clipped to the coastline, appear in a way that's familiar to most users.
 
 ### Exercise - spatial joins
 
-* Read in `data/shp/MSOA_2011_london/MSOA_2011_BFE_London.gpkg` as `msoa_london` - use `st_read()`
-* Create a new object called `lfb_msoa_sf` by running `st_join()` between `lfb_sf` and `msoa_london`
-* Inspect your new object using `head()` or `glimpse()` to see what columns have been added.
+* Read in BFE boundaries`data/shp/MSOA_2011_london/MSOA_2011_BFE_London.gpkg` as `msoa_london_BFE` - use `st_read()`
+* Overwrite `lfb_sf` by running `st_join()` between `lfb_sf` and `msoa_london_BFE`
+* Inspect it using `head()` or `glimpse()` to see what columns have been added.
 
 ```{r}
-msoa_london <- st_read("data/shp/MSOA_2011_london/MSOA_2011_BFE_London.gpkg", quiet = TRUE)
+msoa_london_BFE <- st_read("data/shp/MSOA_2011_london/MSOA_2011_BFE_London.gpkg", quiet = TRUE)
 
-lfb_msoa_sf <- st_join(lfb_sf, msoa_london)
+lfb_sf <- st_join(lfb_sf, msoa_london_BFE) 
 
-head(lfb_msoa_sf)
+head(lfb_sf)
 ```
 
 
@@ -314,21 +315,32 @@ Now that `MSOA11CD` is attached to our observations we can create summary statis
 
 ### Exercise - MSOA summary statistics
 
-* Use `st_drop_geometry()` on `lfb_msoa_sf` to remove geometry data. 
+* Read in BSC boundaries`data/shp/MSOA_2011_london/MSOA_2011_BSC_London.shp` as `msoa_london_BSC` - use `st_read()`
+* Use `st_drop_geometry()` on `lfb_sf` to remove geometry data. 
 * Create summary statistics per MSOA - sum of `cost_gbp` as `total_cost` (use `na.rm = TRUE`), and the total number of incidents as `n_cases`. You will need to use `group_by()` and `summarise()`
 * Use `mutate` to create a new column called `cost_per_incident` which is equal to `total_cost` divided by `n_cases`.
-* Join `lfb_msoa_stats` to `msoa_london`, using `left_join()` and create a new object `msoa_lfb`
+* Join `lfb_msoa_stats` to `msoa_london_BSC`, using `left_join()` and create a new object `msoa_lfb`
 
 ```{r, message=FALSE}
-lfb_msoa_stats <- lfb_msoa_sf %>% 
+msoa_london_BSC <- st_read("data/shp/MSOA_2011_london/MSOA_2011_BSC_London.shp", quiet = TRUE) 
+
+lfb_msoa_stats <- lfb_sf %>% 
                   st_drop_geometry() %>% 
                   group_by(MSOA11CD) %>% 
                   summarise(total_cost = sum(cost_gbp, na.rm=TRUE), n_cases = n()) %>% 
                   mutate(cost_per_incident = total_cost/n_cases)
                          
+msoa_lfb <- left_join(msoa_london_BSC, lfb_msoa_stats)
+head(msoa_lfb)
+```
 
-msoa_lfb <- left_join(msoa_london, lfb_msoa_stats)
-msoa_lfb
+```{r, echo=FALSE}
+
+rm(msoa_london_BFE)
+rm(msoa_london_BSC)
+
+rm(lfb_msoa_stats)
+rm(lfb_sf)
 ```
 
 At this stage it is a good idea to save our data. We can do this using the `st_write()` function. It needs an `sf` object and the path and name of the output.
@@ -339,24 +351,11 @@ At this stage it is a good idea to save our data. We can do this using the `st_w
 
 
 # Making better maps
+## Introduction to tmap
 
 Now that we have processed our data we can start mapping it. So far we have only used the `qtm()` function from the `tmap` package. This creates a default map and is great when all we want to do is quickly visualise our data. The full range of `tmap` functions gives us control over all elements of the final plot and allows us to create high quality maps.
 
-```{r, fig.align='center', message=FALSE}
-tmap_mode("plot")
-
-tm_shape(msoa_lfb) + 
-  tm_polygons(col = "total_cost", border.col = "#4a4949", lwd = 0.05, title = "Total cost (£)", palette = "Blues", contrast = 1, legend.hist = TRUE,
-        labels = c("0 - 2,000", ">2,000 - 4,000", ">4,000 - 6,000", ">6,000 - 8,000", ">8,000 - 10,000", 
-                   ">10,000 - 12,000", ">12,000 - 14,000")) +
-  tm_scale_bar(position = c(0,0), text.size = 0.7) +
-  tm_layout(main.title = "Cost of animal related incidents per MSOA, between 2009 and 2020",  main.title.position =  c(0,0), main.title.size = 1, main.title.fontface = "bold", frame = FALSE, legend.position  = c(0.08,0.18),
-            inner.margins = c(0.1,0.05,0.1,0.02), legend.outside = TRUE, legend.title.size  = 1, legend.text.size =  0.7, title.snap.to.legend = FALSE) +
-  tm_shape(london_boundary) + tm_borders(col = "black", lwd = 0.25)
-```
-
-
-`tmap` follows similar principles to `ggplot2`, where we first specify the data source - `tm_shape`, then the aesthetics of the plot - `tm_polygons`, `tm_dots`, etc., and then we make any final adjustments - `tm_layout`. All functions need to be connected using the `+` symbol.
+`tmap` follows similar principles to `ggplot2`, where we first specify the data source - `tm_shape`, then the aesthetics of the plot - `tm_polygons`, `tm_dots`, etc., and then we make any final adjustments to the overall look - `tm_layout`. All functions need to be connected using the `+` symbol.
 
 * `tm_shape()` - `sf` object which you want to plot
 * `tm_fill()`, `tm_borders()`, `tm_polygons()`, `tm_dots()` - types of output
@@ -364,7 +363,7 @@ tm_shape(msoa_lfb) +
 
 `tmap` syntax: `tm_shape(sf_object) + tm_borders(col = either "colour" or name of column which we want to plot) + tm_layout(main.title = "title of your map")`
 
-### Guided exercise - mapping
+## Guided exercise - mapping
 
 Start by specifying which `sf` object is being mapped in `tm_shape()` and what column holds the values to be visualised. We will also change the legend's title.
 ```{r}
