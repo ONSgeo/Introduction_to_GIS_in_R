@@ -3,4 +3,5 @@
 .RData
 .Ruserdata
 
-Introduction_to_GIS_in_R.html
+.Rmd
+.Rproj
