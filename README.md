@@ -3,7 +3,7 @@
 ### Introduction
 This course provides an introduction to working with geospatial data in R. 
 
-We recommend going through the [Awareness of Geography and Statistics](https://onsgeo.github.io/training/docs/awareness_of_geog_and_stats/intro.html) training prior to starting this course.
+We recommend going through the [Awareness of Geography and Statistics](https://onsgeo.github.io/geospatial-training/docs/awareness_of_geog_and_stats) training prior to starting this course.
 
 **Course Instructions:**
 
